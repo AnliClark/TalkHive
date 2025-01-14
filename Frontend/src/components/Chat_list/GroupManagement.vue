@@ -173,7 +173,10 @@
 
           </div>
           <div class="message-content">
-            <p class="message-text">{{ message.content }}</p>
+            <p v-if="message.type==='text'" class="message-text">{{ message.content }}</p>
+            <p v-else-if="message.type==='image'" class="message-text"><img :src="message.content"/></p>
+            <p v-else-if="message.type==='file'" class="message-text">{{ message.content }}</p>
+            <p v-else class="message-text">[代码块]</p>
           </div>
         </div>
       </div>
@@ -890,9 +893,9 @@ export default {
           );
         });
       }
-      else if(this.searchHistoryType === 'image'){  // todo
+      else if(this.searchHistoryType === 'image'){ 
         return this.history.filter(message => {
-          return message.type === 'image' && message.content.includes(keyword);
+          return message.type === 'image';
         });
       }
       else if(this.searchHistoryType === 'file'){  // todo
@@ -1058,10 +1061,10 @@ export default {
   font-size: var(--font-size-small);
   text-align: left;
   color: #888;
-  padding: 5px;
+  padding: 0 0 0 5px;
 }
 .divide-detail button{
-  padding: 0 5px 0 5px;
+  padding: 2px 5px 2px 5px;
   margin-left: 40px;
 }
 .group-name-detail{
@@ -1070,7 +1073,7 @@ export default {
   padding: 5px;
   height: 20px;
   border: solid 1px #ccc;
-  border-radius: 5%;
+  border-radius: 5px;
 }
 .introduction-detail{
   text-align: left;
@@ -1078,7 +1081,7 @@ export default {
   padding: 5px;
   height: 100px;
   border: solid 1px #ccc;
-  border-radius: 5%;
+  border-radius: 5px;
 }
 
 .flex-container{
@@ -1088,18 +1091,19 @@ export default {
 }
 
 .group-actions {
-  margin-top: 20px;
+  margin-top: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 10px;
 }
-
 .group-actions input {
   margin-right: 10px;
 }
 .group-actions button {
-  margin-top: 10px;
+  margin-top: 5px;
+  width: 80%;
+  
 }
 
 .divider {

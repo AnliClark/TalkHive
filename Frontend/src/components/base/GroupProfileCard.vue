@@ -206,8 +206,9 @@ export default {
     },
     async sendMessage() {
       this.hide();
+      this.$store.dispatch('setCreatingChat', true);
+      this.$store.dispatch('setNewChat',  {id:this.profile.group_id, is_group:true});
       this.$router.push({name: 'chat'});
-      EventBus.emit('go-to-chat', this.profile.account_id, true);
     },
 
     show(event, profile, boundD, boundR) {  // boundD, boundR 为边界的坐标

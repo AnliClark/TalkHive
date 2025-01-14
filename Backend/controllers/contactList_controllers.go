@@ -6,11 +6,12 @@ import (
 	"TalkHive/utils"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // ---------------------------------------------------------------------------
@@ -566,7 +567,7 @@ func AddFriend(c *gin.Context) {
 
 	// 检查是否已发送过好友申请
 	var existingApply models.ApplyInfo
-	err = global.Db.Where("sender_id = ? AND receiver_id = ? AND apply_type = ?", me.AccountID, other.AccountID, "friend").First(&existingApply).Error
+	err = global.Db.Where("sender_id = ? AND receiver_id = ? AND apply_type = ? AND status = ?", me.AccountID, other.AccountID, "friend", "pending").First(&existingApply).Error
 	if err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "好友申请已发送，请勿重复申请"})
 		return
@@ -1280,22 +1281,10 @@ func DeleteFriend(c *gin.Context) {
 	}
 
 	// 删除好友和我的聊天记录
-	if err := global.Db.Where("(owner_id = ? AND contact_id = ?) OR (owner_id = ? AND contact_id = ?)", accountID, input.AccountID, input.AccountID, accountID).Delete(&models.ChatInfo{}).Error; err != nil {
+	if err := global.Db.Where("(account_id = ? AND target_id = ?) OR (account_id = ? AND target_id = ?)", accountID, input.AccountID, input.AccountID, accountID).Delete(&models.ChatInfo{}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "删除聊天记录失败"})
 		return
 	}
-
-	//// 从FriendDivide表中移除好友
-	//if err := global.Db.Where("account_id = ? AND friend_divide_id IN (SELECT friend_divide_id FROM friend_divide WHERE account_id = ?)", accountID, input.AccountID).Delete(&models.FriendDivide{}).Error; err != nil {
-	//	c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "移除好友分组失败"})
-	//	return
-	//}
-	//
-	//// 从好友的FriendDivide中移除当前用户
-	//if err := global.Db.Where("account_id = ? AND friend_divide_id IN (SELECT friend_divide_id FROM friend_divide WHERE account_id = ?)", input.AccountID, accountID).Delete(&models.FriendDivide{}).Error; err != nil {
-	//	c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "移除好友分组失败"})
-	//	return
-	//}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "删除好友成功"})
 }
@@ -1342,8 +1331,6 @@ func GetDivides(c *gin.Context) {
 			return
 		}
 	}
-	fmt.Println("type:" + groupType)
-	fmt.Println("返回divides", divides)
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "成功", "divides": divides})
 }
 
@@ -1486,7 +1473,7 @@ func DeleteDivide(c *gin.Context) {
 			return fmt.Errorf("删除分组失败")
 		}
 
-		// 更新分组中的成员，移入"未分类"分组
+		// 更新分组中的成员，移入"未分组"分组
 		if err := global.Db.Model(&models.Contacts{}).Where("owner_id = ? AND divide = ?", accountID, groupName).Update("divide", "未分组").Error; err != nil {
 			return fmt.Errorf("成员分组更新失败")
 		}
@@ -1500,7 +1487,7 @@ func DeleteDivide(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": fmt.Sprintf("%s分组删除成功，成员已移入未分类分组", groupType)})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": fmt.Sprintf("%s分组删除成功，成员已移入未分组分组", groupType)})
 }
 
 // RenameDivide 重命名分组
@@ -1920,19 +1907,19 @@ func CreateGroup(c *gin.Context) {
 		return
 	}
 
-	// 检查群分组表中是否已经有“未分类”的分组
+	// 检查群分组表中是否已经有“未分组”的分组
 	var existingGroupDivide models.GroupDivide
-	err = global.Db.Where("gd_name = ?", "未分类").First(&existingGroupDivide).Error
+	err = global.Db.Where("gd_name = ?", "未分组").First(&existingGroupDivide).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "查询群聊分组失败"})
 		return
 	}
 
-	// 如果没有找到“未分类”分组，则添加新的分组
+	// 如果没有找到“未分组”分组，则添加新的分组
 	if err == gorm.ErrRecordNotFound {
 		groupdivide := models.GroupDivide{
 			AccountID: uint(accountID),
-			GDName:    "未分类",
+			GDName:    "未分组",
 		}
 		if err := global.Db.Create(&groupdivide).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "创建群聊失败"})
